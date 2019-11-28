@@ -9,18 +9,22 @@
                     </div>
                     <div class="items">
                         <div class="item" v-for="(draft, i) in draftlist" :key="i">
-                            <div @click="putDraftData(i)" class="name" style="color:white;font-style:bold;font-size:1.2em;width:200px;">{{ i + 1 }}.{{ draft.title }}</div>
-                            <!-- <draft-list :index="i" :draft="draft"></draft-list> -->
+                            <!-- <div @click="putDraftData(i)" class="name" style="color:white;font-style:bold;font-size:1.2em;white-space:nowrap;">{{ shortenTitle(draft.title) }}</div> -->
+                            <div @click="putDraftData(i)" class="name">{{ draft.title }}</div>
                         </div>
                     </div>
                 </div>
-                <!-- <button @click="saveDraft">保存</button> -->
             </div>
 
-            <div class="right-side">
+            <div class="center-side">
                 <input v-model="draft.title" placeholder="タイトル"></input>
                 <div class="part">
-                    <textarea v-on:mouseover="zen = true" v-model="draft.text" id="tate" cols="64" rows="23" placeholder="本文"></textarea>
+                    <textarea v-on:mouseover="zen = true" v-model="draft.text" id="tate" cols="70" rows="27" placeholder="本文"></textarea>
+                </div>
+            </div>
+            <div class="right-side">
+                <div v-for="line in splitText(text2lines(convertRoundKakko(draft.text)))">
+                    <p>{{ line }}</p>
                 </div>
             </div>
         </main>
@@ -40,18 +44,17 @@ export default {
             draftlist: [
                 {id: 0, title: "283プロダクション", lines: ['イルミネーションスターズ','アンティーカ','アルストロメリア','放課後クライマックスガールズ','ストレイライト'], created_at: 0, modified_at: 100},
                 {id: 1, title: "346プロダクション", lines: ['エルドリッチ・ロアテラー','Dimension-3',"カワイイボクと142's"], created_at: 1, modified_at: 200}
-                // {id: 1, title: "jrchc_worldend", text: "17:38。\nそれがアタシたちに与えられた時間だった。", created_at: 300},
-                // {id: 2, title: "roomshare", text: "窓辺で文庫本を読む灯織さん。", created_at: 200},
-                // {id: 3, title: "hdcy_afterwork", text: "更衣室にはシンプルな造りのシャワールームがある。", created_at: 100},
             ],
             draft: {
                 title: '',
                 text: '',
             },
+            preview: [['とりあえず'],['へいへい']],
             editting: false,
             confirm: false,
             zen: false,
-            selectIndex: 0
+            selectIndex: 0,
+            chars: 42,
         }
     },
     watch: {
@@ -128,8 +131,28 @@ export default {
             // this.$emit(this.keys[`${event.key}`])
             // this.$emit(new KeyboardEvent( "keydown", {key: this.keys[`${event.key}`]}))
             // document.dispatchEvent( new KeyboardEvent( "keydown", { key: this.keys[`${event.key}`], ctrlKey: false }))
-            console.log(event ,event.key, this.keys[`${event.key}`]);
+            // console.log(event ,event.key, this.keys[`${event.key}`]);
             // console.log(event.key, '->', this.keys.event.key);
+        },
+        shortenTitle(title) {
+            // return [...title].map((char, i) => {
+            //     if (i < 15) return ''
+            //     return char
+            // }).join('')
+            let limit = 10 // 20
+            let count = title.length
+            // [...title].forEach(function(char) {
+            //     count += this.judgeCharWidth(char)
+            // })
+            if (count === limit) {
+                return title
+            } else {
+                return title.substring(0, limit) + (title.length > limit ? '…' : '')
+            }
+        },
+        judgeCharWidth(char) {
+            if (!!(char.match(/^[^\x01-\x7E]+$/))) return 2
+            if (!!(char.match(/^[\xA1-\xDF]+$/) || input.match(/^[a-zA-Z]+$/))) return 1
         },
         showEvent(title) {
             console.log('Selected:', title);
@@ -140,11 +163,22 @@ export default {
         text2lines(text) {
             return text.split('\n')
         },
+        convertRoundKakko(text) {
+            return text.replace(/\(/g, '（').replace(/\)/g, '）')
+        },
         putDraftData(index) {
             this.editting = false
             this.draft.title = this.draftlist[index].title
             this.draft.text = this.lines2text(this.draftlist[index].lines)
+            // this.preview = this.putPreview(this.draftlist[index].lines.slice())
             this.selectIndex = index
+        },
+        splitText(lines, result = []) {
+            if (lines.length == 0) return result
+            let line = lines.shift()
+            result.push(line.slice(0, this.chars + 1))
+            if (line.length > this.chars) lines.unshift(line.slice(this.chars + 1, line.length))
+            return this.splitText(lines, result)
         },
         compare(key, order='asc') {
             return function(a, b) {
@@ -177,6 +211,7 @@ export default {
             this.sortDraftlist()
             this.draftlist[0].title = this.draft.title
             this.draftlist[0].lines = this.text2lines(this.draft.text)
+            // this.preview = this.putPreview(this.draftlist[0].lines.slice())
             console.log('save draft:', JSON.stringify(this.draftlist[0]));
         },
         createDraft() {
@@ -199,7 +234,7 @@ export default {
 </script>
 
 <style>
-/* @import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro'); */
+@import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro');
 @font-face {
 	font-family: 'GenEiKoburiMin';
 	src: url(../assets/GenEiKoburiMin6-R.ttf);
@@ -208,32 +243,35 @@ export default {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    overflow: none;
 }
 
 body {
     /* font-family: 'Source Sans Pro', sans-serif; */
     font-family: GenEiKoburiMin;
+    background-color: #bce2e8;
 }
 
 #wrapper {
     /* background: radial-gradient( ellipse at top left, rgba(255, 255, 255, 1) 40%, rgba(229, 229, 229, .9) 100%); */
-    /* background-color: #bce2e8; */
+    background-color: #bce2e8;
     /* opacity: 0.8; */
-    background-color: #6dcae2;
-    height: 100vh;
-    padding: 40px 80px;
-    width: 100vw;
+    /* background-color: #6dcae2; */
+    height: 100%;
+    width: 100%;
+    padding: 25px;
 }
 
 #logo {
     height: auto;
     margin-bottom: 20px;
-    width: 420px;
+    /* width: 420px; */
 }
 
 main {
     display: flex;
     justify-content: space-between;
+    width: 1200px;
 }
 
 main>div {
@@ -247,6 +285,8 @@ main>div {
 .left-side {
     display: flex;
     flex-direction: column;
+    max-width: 220px;
+    max-height: 704px;
 }
 
 .info {
@@ -302,15 +342,16 @@ main>div {
     background-color: transparent;
 }
 
-.right-side {
-    width: 100%;
+.center-side {
+    display: flex;
+    flex-direction: column;
 }
 
 input {
     font-family: GenEiKoburiMin;
     width: 100%;
     font-size: 1.5em;
-    padding: 10px;
+    padding: 8px;
     border: 0;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
@@ -323,23 +364,18 @@ input:focus {
 .part {
     /* writing-mode: vertical-rl; */
     /* margin: 0 10px 0 10px; */
-    
 }
 
 textarea {
     /* background: transparent; */
-
-    /* writing-mode: initial;
-    transform: rotate(90deg);
-    transform-origin: top left;
-    cursor: vertical-text; */
-    font-family: GenEiKoburiMin;
+    /* font-family: GenEiKoburiMin; */
+    font-family: 'Source Sans Pro', sans-serif;
     font-size: 1em;
-    padding: 10px;
+    padding: 8px;
     border: 0;
     resize: none;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
     line-height: 1.5em;
 }
 
@@ -360,13 +396,78 @@ p {
 }
 
 .item .name {
-    color: #6a6a6a;
-    margin-right: 6px;
+    /* color: #6a6a6a; */
+    margin-right: 8px;
     cursor: default;
+    width: 192px;
+    color:white;
+    font-weight:bold;
+    font-size:1.2em;
+    white-space:wrap;
+}
+
+.item .name:hover {
+    color: #7b7b7b;
 }
 
 .item .value {
     color: #35495e;
     font-weight: bold;
+}
+
+::-webkit-scrollbar{
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track{
+  /* background: #fff; */
+  background-color: #bce2e8;
+  border: none;
+  border-radius: 10px;
+  box-shadow: inset 0 0 2px #777;
+  display: none;
+}
+
+::-webkit-scrollbar-track-piece {
+    background-color: #bce2e8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+/* .right-side {
+    flex: 0 0 470px;
+    flex-direction: row;
+    height: 704px;
+    overflow-y: scroll;
+    writing-mode: vertical-rl;
+    padding: 8px;
+    padding-right: 30px;
+} */
+
+.right-side {
+    writing-mode: vertical-rl;
+    flex: 0 0 540px;
+    height: 704px;
+    overflow-y: scroll;
+    /* border: 2px solid orangered; */
+    margin: 0 8px;
+    padding: 8px;
+    columns: 1 auto;
+    column-gap: 8px;
+    column-rule: 1px dashed orangered;
+    background-color: #eee;
+    /* font-family: HiraMinProN-W3, IPA明朝, Meiryo, メイリオ; */
+    font-weight: normal;
+    font-style: normal;
+    font-variant: inherit;
+}
+
+.right-side p {
+    margin: 0;
+    padding: 0 8px;
 }
 </style>
